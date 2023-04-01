@@ -4,6 +4,6 @@
 
 <p> Big thanks to him for this learning tool and resource </p>
 
-<p> The olcPixelGameEngine helps display pixels on a terminal but the 3D graphics and matrix multiplication are all done in seperate files and not built into the engine </p>
+<p> The olcPixelGameEngine helps display pixels on a terminal but the 3D graphics and matrix multiplication are all done in separate files and not built into the engine </p>
 
 <p> to be continued </p>
