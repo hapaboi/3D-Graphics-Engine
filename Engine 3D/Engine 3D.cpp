@@ -34,14 +34,18 @@ private:
     mesh meshCube;
     mat4x4 mat;
 
+    vec3d virtualCamera;
+
+
+
     float fTheta;
 
     void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m)
     {
-        o.x = i.x * m.m[0][0] + i.y * m.m[1][0] + i.z * m.m[2][0] + m.m[3][0];
-        o.y = i.x * m.m[0][1] + i.y * m.m[1][1] + i.z * m.m[2][1] + m.m[3][1];
-        o.z = i.x * m.m[0][2] + i.y * m.m[1][2] + i.z * m.m[2][2] + m.m[3][2];
-        float w = i.x * m.m[0][3] + i.y * m.m[1][3] + i.z * m.m[2][3] + m.m[3][3];
+		o.x = i.x * m.m[0][0] + i.y * m.m[1][0] + i.z * m.m[2][0] + m.m[3][0];
+		o.y = i.x * m.m[0][1] + i.y * m.m[1][1] + i.z * m.m[2][1] + m.m[3][1];
+		o.z = i.x * m.m[0][2] + i.y * m.m[1][2] + i.z * m.m[2][2] + m.m[3][2];
+		float w = i.x * m.m[0][3] + i.y * m.m[1][3] + i.z * m.m[2][3] + m.m[3][3];
 
         if (w != 0.0f)
         {
@@ -51,9 +55,22 @@ private:
         }
     }
 
+    float magnitude(vec3d findmag) {
+        float mag = sqrtf(findmag.x * findmag.x + findmag.y * findmag.y + findmag.z * findmag.z);
+        return mag;
+    }
+
+    void normalize(vec3d normalizedvector) {
+        float mag = magnitude(normalizedvector);
+        normalizedvector.x /= mag;
+        normalizedvector.y /= mag;
+        normalizedvector.z /= mag;
+    }
+
 public:
     bool OnUserCreate() override
     {
+        // Create each triangle in the mesh
         meshCube.tris = {
             // SOUTH
             { 0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 1.0f, 0.0f },
@@ -76,7 +93,7 @@ public:
             { 0.0f, 1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f, 0.0f },
 
             // BOTTOM
-            { 0.0f, 0.0f, 1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, 0.0f },
+            { 1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, 0.0f },
             { 1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f },
 
         };
@@ -115,7 +132,7 @@ public:
         matRotZ.m[2][2] = 1;
         matRotZ.m[3][3] = 1;
 
-        // Rotatioon X Matrix
+        // Rotation X Matrix
         matRotX.m[0][0] = 1;
         matRotX.m[1][1] = cosf(fTheta * 0.5f);
         matRotX.m[1][2] = sinf(fTheta * 0.5f);
@@ -123,6 +140,7 @@ public:
         matRotX.m[2][2] = cosf(fTheta * 0.5f);
         matRotX.m[3][3] = 1;
 
+        // Loop through all triangles in the mesh
         for (auto tri : meshCube.tris)
         {
             triangle triProjected, triTranslated, triRotatedZ, triRotatedZX;
@@ -137,28 +155,59 @@ public:
             MultiplyMatrixVector(triRotatedZ.p[1], triRotatedZX.p[1], matRotX);
             MultiplyMatrixVector(triRotatedZ.p[2], triRotatedZX.p[2], matRotX);
 
-            // Move triangle in Z axis
+            // Move and offset on Z axis
             triTranslated = triRotatedZX;
             triTranslated.p[0].z = triRotatedZX.p[0].z + 3.0f;
             triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
             triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
 
-            MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], mat);
-            MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], mat);
-            MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], mat);
 
-            triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
-            triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1.0f;
-            triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1.0f;
+            // Calculate normal
+            vec3d normal, line1, line2;
 
-            triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
-            triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
-            triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
-            triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
-            triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
-            triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
+            line1.x = triTranslated.p[1].x - triTranslated.p[0].x;
+            line1.y = triTranslated.p[1].y - triTranslated.p[0].y;
+            line1.z = triTranslated.p[1].z - triTranslated.p[0].z;
 
-            DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y, olc::WHITE);
+            line2.x = triTranslated.p[2].x - triTranslated.p[0].x;
+            line2.y = triTranslated.p[2].y - triTranslated.p[0].y;
+            line2.z = triTranslated.p[2].z - triTranslated.p[0].z;
+
+            normal.x = line1.y * line2.z - line1.z * line2.y;
+            normal.y = line1.z * line2.x - line1.x * line2.z;
+            normal.z = line1.x * line2.y - line1.y * line2.x;
+
+            normalize(normal);
+
+
+            // Draw only if normal is negative in comparison with camera
+            if (normal.x * (triTranslated.p[0].x - virtualCamera.x) +
+                normal.y * (triTranslated.p[0].y - virtualCamera.y) +
+                normal.z * (triTranslated.p[0].z - virtualCamera.z) < 0.0f)
+            {
+                // Illumination
+                vec3d light_direction = { 0.0f, 0.0f, -1.0f };
+
+                // Create triangle in 2D
+                MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], mat);
+                MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], mat);
+                MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], mat);
+
+                // Scale triangle
+                triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
+                triProjected.p[1].x += 1.0f; triProjected.p[1].y += 1.0f;
+                triProjected.p[2].x += 1.0f; triProjected.p[2].y += 1.0f;
+
+                triProjected.p[0].x *= 0.5f * (float)ScreenWidth();
+                triProjected.p[1].x *= 0.5f * (float)ScreenWidth();
+                triProjected.p[2].x *= 0.5f * (float)ScreenWidth();
+                triProjected.p[0].y *= 0.5f * (float)ScreenHeight();
+                triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
+                triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
+
+                // Draw the triangle
+                DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y, olc::WHITE);
+            }
         }
         return true;
     }
@@ -177,14 +226,3 @@ int main()
     }
 
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
