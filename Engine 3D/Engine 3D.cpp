@@ -1,102 +1,170 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
+#include <fstream>
+#include <strstream>
+#include <algorithm>
 #include <iostream>
 
-struct vec3d
-{
+struct vec3d {
+
     float x, y, z;
 };
 
-struct triangle
-{
+struct triangle {
+
     vec3d p[3];
+
+    olc::Pixel col;
+
 };
 
-struct mesh
-{
+struct mesh {
+
     std::vector<triangle> tris;
+
+    bool LoadObjectFile(std::string fileName) {
+
+        std::ifstream f(fileName);
+        if (!f.is_open()) {
+
+            return false;
+
+        }
+
+        // Pool of vertices
+        std::vector<vec3d> verts;
+
+        while (!f.eof()) {
+
+            char line[128];
+            f.getline(line, 128);
+
+            std::strstream s;
+            s << line;
+
+            char junk;
+
+            if (line[0] == 'v') {
+
+                vec3d v;
+                s >> junk >> v.x >> v.y >> v.z;
+                verts.push_back(v);
+
+            }
+            if (line[0] == 'f') {
+
+                int fi[3];
+                s >> junk >> fi[0] >> fi[1] >> fi[2];
+                tris.push_back({ verts[fi[0] - 1], verts[fi[1] - 1], verts[fi[2] - 1] });
+
+            }
+        }
+
+        return true;
+    }
 };
 
-struct mat4x4
-{
+struct mat4x4 {
+
     float m[4][4] = { 0 };
+
 };
-class olcEngine3D : public olc::PixelGameEngine
-{
+class olcEngine3D : public olc::PixelGameEngine {
 
 public:
-    olcEngine3D()
-    {
+    olcEngine3D() {
+
         sAppName = "3D Demo";
+
     }
 
 private:
+
     mesh meshCube;
     mat4x4 mat;
 
     vec3d virtualCamera;
 
-
-
     float fTheta;
 
-    void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m)
-    {
+    void MultiplyMatrixVector(vec3d &i, vec3d &o, mat4x4 &m) {
+
 		o.x = i.x * m.m[0][0] + i.y * m.m[1][0] + i.z * m.m[2][0] + m.m[3][0];
 		o.y = i.x * m.m[0][1] + i.y * m.m[1][1] + i.z * m.m[2][1] + m.m[3][1];
 		o.z = i.x * m.m[0][2] + i.y * m.m[1][2] + i.z * m.m[2][2] + m.m[3][2];
 		float w = i.x * m.m[0][3] + i.y * m.m[1][3] + i.z * m.m[2][3] + m.m[3][3];
 
-        if (w != 0.0f)
-        {
+        if (w != 0.0f) {
+
             o.x /= w;
             o.y /= w;
             o.z /= w;
+
         }
     }
 
+    // Input parameter lum must be between 0 and 1 - i.e. [0, 1]
+    olc::Pixel GetColor(float lum) {
+
+        int nValue = (int)(std::max(lum, 0.20f) * 255.0f);
+        return olc::Pixel(nValue, nValue, nValue);
+
+    }
+
     float magnitude(vec3d findmag) {
+
         float mag = sqrtf(findmag.x * findmag.x + findmag.y * findmag.y + findmag.z * findmag.z);
         return mag;
+
     }
 
     void normalize(vec3d normalizedvector) {
+
         float mag = magnitude(normalizedvector);
         normalizedvector.x /= mag;
         normalizedvector.y /= mag;
         normalizedvector.z /= mag;
+
+    }
+
+    float dotprod(vec3d vec1, vec3d vec2) {
+
+        float dp = vec1.x * vec2.x + vec1.y * vec2.y + vec1.z * vec2.z;
+        return dp;
+
     }
 
 public:
-    bool OnUserCreate() override
-    {
-        // Create each triangle in the mesh
-        meshCube.tris = {
-            // SOUTH
-            { 0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 1.0f, 0.0f },
-            { 0.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f,   1.0f, 0.0f, 0.0f },
+    bool OnUserCreate() override {
+        //// Create each triangle in the mesh
+        //meshCube.tris = {
+        //    // SOUTH
+        //    { 0.0f, 0.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 1.0f, 0.0f },
+        //    { 0.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f,   1.0f, 0.0f, 0.0f },
 
-            // EAST
-            { 1.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f,   1.0f, 1.0f, 1.0f },
-            { 1.0f, 0.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f, 1.0f },
+        //    // EAST
+        //    { 1.0f, 0.0f, 0.0f,   1.0f, 1.0f, 0.0f,   1.0f, 1.0f, 1.0f },
+        //    { 1.0f, 0.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f, 1.0f },
 
-            // NORTH
-            { 1.0f, 0.0f, 1.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, 1.0f },
-            { 1.0f, 0.0f, 1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 0.0f, 1.0f },
+        //    // NORTH
+        //    { 1.0f, 0.0f, 1.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f, 1.0f },
+        //    { 1.0f, 0.0f, 1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 0.0f, 1.0f },
 
-            // WEST
-            { 0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 1.0f, 0.0f },
-            { 0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 0.0f,   0.0f, 0.0f, 0.0f },
+        //    // WEST
+        //    { 0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 1.0f,   0.0f, 1.0f, 0.0f },
+        //    { 0.0f, 0.0f, 1.0f,   0.0f, 1.0f, 0.0f,   0.0f, 0.0f, 0.0f },
 
-            // TOP
-            { 0.0f, 1.0f, 0.0f,   0.0f, 1.0f, 1.0f,   1.0f, 1.0f, 1.0f },
-            { 0.0f, 1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f, 0.0f },
+        //    // TOP
+        //    { 0.0f, 1.0f, 0.0f,   0.0f, 1.0f, 1.0f,   1.0f, 1.0f, 1.0f },
+        //    { 0.0f, 1.0f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f, 0.0f },
 
-            // BOTTOM
-            { 1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, 0.0f },
-            { 1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f },
+        //    // BOTTOM
+        //    { 1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, 0.0f },
+        //    { 1.0f, 0.0f, 1.0f,   0.0f, 0.0f, 0.0f,   1.0f, 0.0f, 0.0f },
 
-        };
+        //};
+
+        meshCube.LoadObjectFile("VideoShip.obj");
 
         // Projection Matrix
         float fNear = 0.1f;
@@ -116,8 +184,7 @@ public:
         return true;
     }
 
-    bool OnUserUpdate(float fElapsedTime) override
-    {
+    bool OnUserUpdate(float fElapsedTime) override {
 
         FillRect(0, 0, ScreenWidth(), ScreenHeight(), olc::RED);
 
@@ -140,6 +207,8 @@ public:
         matRotX.m[2][2] = cosf(fTheta * 0.5f);
         matRotX.m[3][3] = 1;
 
+        std::vector<triangle> vecTrianglesToRaster;
+
         // Loop through all triangles in the mesh
         for (auto tri : meshCube.tris)
         {
@@ -157,9 +226,9 @@ public:
 
             // Move and offset on Z axis
             triTranslated = triRotatedZX;
-            triTranslated.p[0].z = triRotatedZX.p[0].z + 3.0f;
-            triTranslated.p[1].z = triRotatedZX.p[1].z + 3.0f;
-            triTranslated.p[2].z = triRotatedZX.p[2].z + 3.0f;
+            triTranslated.p[0].z = triRotatedZX.p[0].z + 8.0f;
+            triTranslated.p[1].z = triRotatedZX.p[1].z + 8.0f;
+            triTranslated.p[2].z = triRotatedZX.p[2].z + 8.0f;
 
 
             // Calculate normal
@@ -188,10 +257,21 @@ public:
                 // Illumination
                 vec3d light_direction = { 0.0f, 0.0f, -1.0f };
 
+                // How similar is normal light to the direction of light
+                normalize(light_direction);
+                float dp = dotprod(normal, light_direction);
+
+                // Choose console colors
+                olc::Pixel lumcolor = GetColor(dp);
+                triTranslated.col = lumcolor;
+
+
+
                 // Create triangle in 2D
                 MultiplyMatrixVector(triTranslated.p[0], triProjected.p[0], mat);
                 MultiplyMatrixVector(triTranslated.p[1], triProjected.p[1], mat);
                 MultiplyMatrixVector(triTranslated.p[2], triProjected.p[2], mat);
+                triProjected.col = lumcolor;
 
                 // Scale triangle
                 triProjected.p[0].x += 1.0f; triProjected.p[0].y += 1.0f;
@@ -205,24 +285,43 @@ public:
                 triProjected.p[1].y *= 0.5f * (float)ScreenHeight();
                 triProjected.p[2].y *= 0.5f * (float)ScreenHeight();
 
-                // Draw the triangle
-                DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y, olc::WHITE);
+                // Store triangle for sorting
+                vecTrianglesToRaster.push_back(triProjected);
             }
         }
+
+
+        // Sort triangles from back to front
+        sort(vecTrianglesToRaster.begin(), vecTrianglesToRaster.end(), [](triangle& t1, triangle& t2) {
+            float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
+            float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
+            return z1 > z2;
+        });
+
+
+        for (auto& triProjected : vecTrianglesToRaster) {
+            // Draw the triangle
+            FillTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y, triProjected.col);
+            //DrawTriangle(triProjected.p[0].x, triProjected.p[0].y, triProjected.p[1].x, triProjected.p[1].y, triProjected.p[2].x, triProjected.p[2].y, olc::BLACK);
+        }
+
         return true;
     }
 };
 
-int main()
-{
+int main() {
+
     olcEngine3D demo;
-    if (demo.Construct(256, 240, 4, 4))
-    {
+
+    if (demo.Construct(256, 240, 4, 4)) {
+
         demo.Start();
+
     }
-    else
-    {
+    else {
+
         std::cout << "error";
+
     }
 
 }
